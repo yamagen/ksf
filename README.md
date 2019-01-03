@@ -1,0 +1,2 @@
+# ksf
+Kanji Statistic Filter
