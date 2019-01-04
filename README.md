@@ -1,5 +1,5 @@
 # ksf: Kanji Statistic Filter
-Time-stamp: "2019-01-04 17:20:19 yamagen"
+Time-stamp: "2019-01-04 17:30:44 yamagen"
 
 <img src="ksf.png" alt="ksf" border=0>
 
@@ -103,11 +103,9 @@ of Text           Kanji
   100               1781
 ```
 
-## ダウンロード
-
 ## その他
 
 - 改編前のプログラム名はkazoeru.cです。
-- このプログラムは、GPL2準拠の配布でお願いします。
+- このプログラムは、MIT Licenseでお願いします。
 
 (c) 2010-19 Hilofumi Yamamoto
