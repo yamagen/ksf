@@ -1,60 +1,40 @@
-# ksf
-Kanji Statistic Filter
+# ksf: Kanji Statistic Filter
+Time-stamp: "2019-01-04 17:20:19 yamagen"
 
-# Japanese KWIC 'jk' Page / JK:Keyword-In-Context
+<img src="ksf.png" alt="ksf" border=0>
 
-Time-stamp: "2019-01-04 13:36:12 yamagen"
+Kanji, Kana, etc. Count Program
+Hilofumi Yamamoto
+文字種集計プログラム 'ksf'<br>
 
-
-<table border="0" align="left">
-<tr>
- <td><img src="ksf.png" alt="jk" border=0></td>
- <td>
-  <b>'ksf' KSFK:Kanji-Statistic-Filter<br>
-  Kanji, Kana, etc. Count Program<br>
-  Hilofumi Yamamoto</b><tt>(yamagen_at_ryu.titech.ac.jp)</tt>
- <p>
- 文字種集計プログラム 'ksf'<br>
-</td>
-</tr>
-</table>
-<br clear=left>
-
-<h4>説明</h4>
+## 説明
 日本語の文字種集計プログラムです。
 使い方は簡単です。プログラム名の後ろにファイル名を書くだけです。
 
-<pre>
+```
 % ksf textfile 
-</pre>
+```
 
-<ul>
- <li> make だけでコンパイルできます。</li>
- <li> 詳しいオプションは、-hでごらんください。</li>
- <li> デフォルトは、EUCですが、-sをつけるとシフトJISも使えます。</li>
- <li> make sjis でコンパイルすると、シフトJISがデフォルトで使えます。</li>
-</ul>
+- make だけでコンパイルできます。
+- 詳しいオプションは、-hでごらんください。
+- デフォルトは、EUCですが、-sをつけるとシフトJISも使えます。
+- make sjis でコンパイルすると、シフトJISがデフォルトで使えます。
 
 
-<h4>
-オプション
-</h4>
+## オプション
 
- <pre>
+```
   -c  show only kanji frequency count
   -t  print only summary table
   -f  show only kanji fraction data
   -e  show only table explanation
   -h  print this help
   -v  print ksf version
-</pre>
+```
 
+## 出力例
 
-<h4>
- 出力例
-</h4>
-
-<pre>
+```
 % ksf bochan.euc
 1       云      517     1.9410
 2       出      423     3.5291
@@ -121,22 +101,13 @@ of Text           Kanji
    98               1307
    99               1515
   100               1781
-</pre>
+```
 
-<h4>ダウンロード</h4>
+## ダウンロード
 
-<ul type=square>
- <li> <a href="ksf.tar.gz" name="ksf" align=center>ksf.tar.gz</a></li>
-</ul>
+## その他
 
-<h4>その他</h4>
+- 改編前のプログラム名はkazoeru.cです。
+- このプログラムは、GPL2準拠の配布でお願いします。
 
-<ul type=square>
- <li> 改編前のプログラム名はkazoeru.cです。</li> 
- <li>このプログラムは、GPL2準拠の配布でお願いします。
-</ul>
-
-<hr noshade size=1>
-(c) 2010 Hilofumi Yamamoto
-</BODY>
-</HTML>
+(c) 2010-19 Hilofumi Yamamoto
