@@ -1,9 +1,7 @@
-/*     
- *     ksf.c (Kanji Statistics Filter)
- *     
- *     Hilofumi Yamamoto <yamagen@ucsd.edu>
- *     $Id: ksf.c,v 1.4 2003/07/06 00:55:12 yamagen Exp $
- *     
+/*     ksf.c (Kanji Statistics Filter)     
+ *     Time-stamp: "2019-01-05 12:16:39 yamagen"
+ *     Hilofumi Yamamoto <yamagen@ila.titech.ac.jp>
+ *
  *     Hilofumi Yamamoto 03-July-1998 <yamagen@ucsd.edu>
  *     Pipe redirection
  *     Hilofumi Yamamoto 02-July-1998 <yamagen@ucsd.edu>
