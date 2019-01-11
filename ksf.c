@@ -1,5 +1,5 @@
 /*     ksf.c (Kanji Statistics Filter)     
- *     Time-stamp: "2019-01-05 12:16:39 yamagen"
+ *     Time-stamp: "2019-01-11 13:04:52 yamagen"
  *     Hilofumi Yamamoto <yamagen@ila.titech.ac.jp>
  *
  *     Hilofumi Yamamoto 03-July-1998 <yamagen@ucsd.edu>
@@ -20,6 +20,8 @@
  */
 
 #include        <stdio.h>
+#include        <stdlib.h>
+#include        <string.h>
 
 #define	PROG_NAME	"ksf"
 #define	USAGE		"% " PROG_NAME " [-ctfevh] file...."
@@ -91,8 +93,7 @@ static int opt_show_a, opt_show_b;
 static void version(FILE *fp);
 int main(int argc, char **argv);
 
-static char
-rcsid[] = "$Id: ksf.c,v 1.4 2003/07/06 00:55:12 yamagen Exp $";
+static const char rcsid[] = "$Id: ksf.c,v 1.4 2003/07/06 00:55:12 yamagen Exp $";
 
 typedef struct {
   unsigned int  U,L;
@@ -120,7 +121,7 @@ typedef struct {
 
 static void usage()
 {
-  fprintf(stderr, "usage: " USAGE "\n" OPTION "\n");
+  fprintf(stderr, "usage: %s\n %s\n", USAGE, OPTION);
   exit(1);
 }
 
@@ -169,18 +170,18 @@ int main(int argc, char **argv)
       case 'f': FRA = TRUE; break;
       case 'c':	CNT = TRUE; break;
       case 'v':
-				version(stderr);
-				exit(0);
-				break;
+	version(stderr);
+	exit(0);
+	break;
       case 'h':
-				usage();
-				exit(0);
-				break;
+	usage();
+	exit(0);
+	break;
       default:
-				fprintf(stderr, "%s : invalid option -- %c\n", PROG_NAME, *op);
-				usage();
-				exit(0);
-				break;
+	fprintf(stderr, "%s : invalid option -- %c\n", PROG_NAME, *op);
+	usage();
+	exit(0);
+	break;
       }
     }
   }
@@ -215,7 +216,7 @@ int main(int argc, char **argv)
  */
 
 void 
-include_file(char *file_name, unsigned long *kanji_array, stats_record *stats)
+include_file (char *file_name, unsigned long *kanji_array, stats_record *stats)
 {
   FILE          *fp;
   int	        done;
@@ -256,7 +257,8 @@ include_file(char *file_name, unsigned long *kanji_array, stats_record *stats)
  *
  */
 
-void classify_kanji(fb_euc, sb_euc, k_array, stats)
+void
+classify_kanji (fb_euc, sb_euc, k_array, stats)
      unsigned int   fb_euc,sb_euc;
      unsigned long  *k_array;
      stats_record    *stats;
@@ -301,7 +303,7 @@ void classify_kanji(fb_euc, sb_euc, k_array, stats)
  */
 
 void 
-dump_kanji_stat(FILE *output, unsigned long *kanji_array,stats_record *stats)
+dump_kanji_stat (FILE *output, unsigned long *kanji_array,stats_record *stats)
 {
   kanji_record	*kanji_vector,*vector_entry,*last_entry;
   double        total_chars,cumulative_percentage,running_total,
@@ -354,7 +356,6 @@ dump_kanji_stat(FILE *output, unsigned long *kanji_array,stats_record *stats)
    *  how many times they occured, the actual Kanji, and the running
    *  total percentage of Kanji shown so far. 
    *  (although not in that order :-)
-   *
    */
 
   vector_entry = kanji_vector;
@@ -369,17 +370,17 @@ dump_kanji_stat(FILE *output, unsigned long *kanji_array,stats_record *stats)
     
     if(OBOSOLETE)
       fprintf(output,"%d\t%X%X\t%c%c\t%d\t%9.5f\n",
-	      kanji_number++,
+	      (int)kanji_number++,
 	      vector_entry->U,	vector_entry->L,
 	      vector_entry->U,	vector_entry->L,
-	      vector_entry->count,
+	      (int)vector_entry->count,
 	      cumulative_percentage);
 
     if(CNT)
       fprintf(output,"%d\t%c%c\t%d\t%6.4f\n",
-	      kanji_number++,
+	      (int)kanji_number++,
 	      vector_entry->U,	vector_entry->L,
-	      vector_entry->count,
+	      (int)vector_entry->count,
 	      cumulative_percentage);
 
     if (vector_entry->count == 1)
@@ -391,34 +392,21 @@ dump_kanji_stat(FILE *output, unsigned long *kanji_array,stats_record *stats)
     fprintf(output,"\n");
   total_chars = 100.0 / stats->jis_cnt;
   if(TAB){
-    fprintf(output,"files        %9d\n", stats->success_files);
-    fprintf(output,"kanji(total) %9d\t(%4.1f%%)\n",
-	    stats->kanji_cnt, stats->kanji_cnt*total_chars);
-    fprintf(output,"kanji(unique)%9d\n", stats->unique_kanji);
-    fprintf(output,"kanji(once)  %9d\t(%4.1f%% of unique)\n",
-	    single_total,single_total*100.0/stats->unique_kanji);
-    fprintf(output,"hiragana     %9d\t(%4.1f%%)\n",
-	    stats->hiragana_cnt, stats->hiragana_cnt*total_chars);
-    fprintf(output,"katakana     %9d\t(%4.1f%%)\n",
-	    stats->katakana_cnt, stats->katakana_cnt*total_chars);
-    fprintf(output,"Arabic       %9d\t(%4.1f%%)\n",
-	    stats->number_cnt, stats->number_cnt*total_chars);
-    fprintf(output,"Roman        %9d\t(%4.1f%%)\n",
-	    stats->roman_cnt, stats->roman_cnt*total_chars);
-    fprintf(output,"Cyrillic     %9d\t(%4.1f%%)\n",
-	    stats->cyrillic_cnt, stats->cyrillic_cnt*total_chars);
-    fprintf(output,"Greek        %9d\t(%4.1f%%)\n",
-	    stats->greek_cnt, stats->greek_cnt*total_chars);
-    fprintf(output,"graphic      %9d\t(%4.1f%%)\n",
-	    stats->graphic_cnt, stats->graphic_cnt*total_chars);
-    fprintf(output,"punctuation  %9d\t(%4.1f%%)\n",
-	    stats->punctuation_cnt, stats->punctuation_cnt*total_chars);
-    fprintf(output,"symbols      %9d\t(%4.1f%%)\n",
-	    stats->symbol_cnt, stats->symbol_cnt*total_chars);
-    fprintf(output,"space        %9d\t(%4.1f%%)\n",
-	    stats->space_cnt, stats->space_cnt*total_chars);
-    fprintf(output,"other        %9d\t(%4.1f%%)\n",
-	    stats->other_cnt, stats->other_cnt*total_chars);
+    fprintf(output,"files        %9d\n", (int)stats->success_files);
+    fprintf(output,"kanji(total) %9d\t(%4.1f%%)\n", (int)stats->kanji_cnt, stats->kanji_cnt*total_chars);
+    fprintf(output,"kanji(unique)%9d\n", (int)stats->unique_kanji);
+    fprintf(output,"kanji(once)  %9d\t(%4.1f%% of unique)\n", (int)single_total, single_total*100.0/stats->unique_kanji);
+    fprintf(output,"hiragana     %9d\t(%4.1f%%)\n", (int)stats->hiragana_cnt, stats->hiragana_cnt*total_chars);
+    fprintf(output,"katakana     %9d\t(%4.1f%%)\n", (int)stats->katakana_cnt, stats->katakana_cnt*total_chars);
+    fprintf(output,"Arabic       %9d\t(%4.1f%%)\n", (int)stats->number_cnt, stats->number_cnt*total_chars);
+    fprintf(output,"Roman        %9d\t(%4.1f%%)\n", (int)stats->roman_cnt, stats->roman_cnt*total_chars);
+    fprintf(output,"Cyrillic     %9d\t(%4.1f%%)\n", (int)stats->cyrillic_cnt, stats->cyrillic_cnt*total_chars);
+    fprintf(output,"Greek        %9d\t(%4.1f%%)\n", (int)stats->greek_cnt, stats->greek_cnt*total_chars);
+    fprintf(output,"graphic      %9d\t(%4.1f%%)\n", (int)stats->graphic_cnt, stats->graphic_cnt*total_chars);
+    fprintf(output,"punctuation  %9d\t(%4.1f%%)\n", (int)stats->punctuation_cnt, stats->punctuation_cnt*total_chars);
+    fprintf(output,"symbols      %9d\t(%4.1f%%)\n", (int)stats->symbol_cnt, stats->symbol_cnt*total_chars);
+    fprintf(output,"space        %9d\t(%4.1f%%)\n", (int)stats->space_cnt, stats->space_cnt*total_chars);
+    fprintf(output,"other        %9d\t(%4.1f%%)\n", (int)stats->other_cnt, stats->other_cnt*total_chars);
   }
 
   /*
@@ -477,7 +465,7 @@ show_fractions( output, kanji_vector, stats )
       kanji_count++;
       element++;
     }
-    fprintf(output,"   %d0              %5d\n",fraction,kanji_count);
+    fprintf(output,"   %d0              %5d\n",(int)fraction, (int)kanji_count);
     target += ten_percent;
   }
 
@@ -489,9 +477,9 @@ show_fractions( output, kanji_vector, stats )
       kanji_count++;
       element++;
     }
-    fprintf(output,"   9%d              %5d\n",fraction,kanji_count);
+    fprintf(output,"   9%d              %5d\n", (int)fraction, (int)kanji_count);
     target += one_percent;
   }
-  fprintf(output,"  100              %5d\n", stats->unique_kanji);
+  fprintf(output,"  100              %5d\n", (int)stats->unique_kanji);
 } /* show_fractions() */
 
