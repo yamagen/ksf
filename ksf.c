@@ -1,485 +1,317 @@
-/*     ksf.c (Kanji Statistics Filter)     
- *     Time-stamp: "2019-01-11 13:21:06 yamagen"
- *     Hilofumi Yamamoto <yamagen@ila.titech.ac.jp>
- *
- *     Hilofumi Yamamoto 03-July-1998 <yamagen@ucsd.edu>
- *     Pipe redirection
- *     Hilofumi Yamamoto 02-July-1998 <yamagen@ucsd.edu>
- *     EUC version. The fraction algorithm is neat.
- *     
- *     Tim Burress       18-Sep.-1991 <burress@twics.co.jp>                 
- *     Examine a specified group of files for JIS kanji codes, recording 
- *     the frequencies of each character.  The JIS processing algorithm  
- *     was originally supplied by <fukumoto@aa.cs.keio.ac.jp>.           
- *     Hacked beyond all belief/recognition by Jason Molenda, Jan 1992 
- *     (molenda@msi.umn.edu).  All comments in this current style were
- *     added by myself; others are the original author's comments
- *     Should now compile on a normal Unix system. (works for me on
- *     an SGI under IRIX 4.0.1 and a Sun under SunOS 4.1.1.)
- *
- */
+#include <stdio.h>
+#include <string.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
-#include        <stdio.h>
-#include        <stdlib.h>
-#include        <string.h>
+#define INITIAL_CHAR_COUNT 256  // 初期の文字数カウント
+#define MAX_LINE_LENGTH 8192    // fgetsで読み取る最大行長
 
-#define	PROG_NAME	"ksf"
-#define	USAGE		"% " PROG_NAME " [-ctfevh] file...."
-#define	OPTION          "  -c  show only kanji frequency count\n"\
-                        "  -t  print only summary table\n"\
-                        "  -f  show only kanji fraction data\n"\
-                        "  -e  show only table explanation\n"\
-                        "  -h  print this help\n"\
-                        "  -v  print " PROG_NAME " version"
+#define VERSION "1.0.0 Last change: 2024/10/22-07:59:42."  // プログラムのバージョン
+#define AUTHOR "Hilofumi Yamamoto"  // プログラムの作者
+#define PROGRAM "ksf"  // プログラム名
+#define LICENSE "Apache 2.0"  // ライセンス情報
 
-/*
- *  EUC Character Numerical location
- *
- *  161---FB_EUC-----------------------------------------244
- *  161---FB_KANA-------175|176------FB_KANJI------------244
- *  161---SB_EUC--------------------------------------------254
- *  
- */
+#define isutf8_1byte(a) ((a & 0x80) == 0)            // 1バイトASCII文字
+#define isutf8_2byte(a) ((a & 0xE0) == 0xC0)         // 2バイト文字
+#define isutf8_3byte(a) ((a & 0xF0) == 0xE0)         // 3バイト文字
+#define isutf8_4byte(a) ((a & 0xF8) == 0xF0)         // 4バイト文字
+#define isutf8_continuation_byte(a) ((a & 0xC0) == 0x80)  // 後続バイト
 
-#define iseuc(a)	(a >= 161 && a <= 254)
-#define iseuckanji(a)	(a >= 176 && a <= 244)
-
-#define FB_SPACE	161
-#define SB_SPACE	161
-#define FB_EUC_BEGIN	161
-#define FB_EUC_END	244
-
-#define FB_PUNC	        161
-#define sb_punc(a)	(a >= 162 && a <= 170)
-
-#define fb_symb(a)	(a >= 161 && a <= 162)
-#define sb_symb(a)	(a >= 171 && a <= 254)
-
-#define FB_ROMAN_NUM    163
-#define sb_num(a)	(a >= 176 && a <= 185)
-#define sb_rom(a)	(a >= 193 && a <= 250)
-
-#define FB_HIRAGANA     164
-#define FB_KATAKANA     165
-#define FB_GREEK	166
-#define FB_CYRILLIC     167
-#define FB_GRAPHIC      168
-
-#define FB_KANA_BEGIN	161
-#define FB_KANA_END	175
-#define FB_KANJI_BEGIN	176
-#define FB_KANJI_END	244
-
-#define SB_EUC_BEGIN	161
-#define SB_EUC_END	254
-
-#define FB_EUC_RANGE	(FB_EUC_END   - FB_EUC_BEGIN   +1) /* 1byte range*/
-#define SB_EUC_RANGE	(SB_EUC_END   - SB_EUC_BEGIN   +1) /* 2byte range*/
-
-#define TRUE		1
-#define FALSE		0
-#define OBOSOLETE 0
-
-/*
- * Flag Control
- */
-int TAB = FALSE;
-int CAP = FALSE;
-int FRA = FALSE;
-int CNT = FALSE;
-
-static void usage();
-static int opt_show_a, opt_show_b;
-static void version(FILE *fp);
-int main(int argc, char **argv);
-
-static const char rcsid[] = "$Id: ksf.c,v 1.4 2003/07/06 00:55:12 yamagen Exp $";
-
+// ハッシュマップのエントリ構造
 typedef struct {
-  unsigned int  U,L;
-  unsigned long count;
-} kanji_record;
+    unsigned char utf8_char[5];  // UTF-8文字（最大4バイト + 終端）
+    int count;                   // 出現回数
+    bool is_kanji;               // 漢字かどうかのフラグ
+} CharCount;
 
+// 出現回数を保存する動的配列
+CharCount *char_count;
+int char_count_size = 0;
+int char_count_capacity = INITIAL_CHAR_COUNT;
 
-typedef struct {
-  unsigned long unique_kanji;
-  unsigned long kanji_cnt;
-  unsigned long hiragana_cnt;
-  unsigned long katakana_cnt;
-  unsigned long other_cnt;
-  unsigned long roman_cnt;
-  unsigned long number_cnt;
-  unsigned long cyrillic_cnt;
-  unsigned long greek_cnt;
-  unsigned long punctuation_cnt;
-  unsigned long space_cnt;
-  unsigned long graphic_cnt;
-  unsigned long symbol_cnt;
-  unsigned long jis_cnt;
-  unsigned long success_files;
-} stats_record;
+// オプションフラグ
+bool count_kanji_only = false;          // 漢字リストのみを出力するか
+bool count_kanji_coverage = false;      // 漢字カバー率を出力するか
 
-static void usage()
-{
-  fprintf(stderr, "usage: %s\n %s\n", USAGE, OPTION);
-  exit(1);
-}
-
-static void version(FILE *fp)
-{
-  fprintf(fp, "%s\n",rcsid);
-}
-
-int main(int argc, char **argv)
-{
-  char *format;
-  char *op;
-  unsigned long kanji_dim[FB_EUC_RANGE][SB_EUC_RANGE];
-
-  void          dump_kanji_stat(), include_file();
-  int           index;   /* index into argv */
-  stats_record  stats;
-
-  stats.unique_kanji    = 0;
-  stats.kanji_cnt       = 0;
-  stats.hiragana_cnt    = 0;
-  stats.other_cnt       = 0;
-  stats.roman_cnt       = 0;
-  stats.number_cnt      = 0;
-  stats.cyrillic_cnt    = 0;
-  stats.greek_cnt       = 0;
-  stats.punctuation_cnt = 0;
-  stats.space_cnt       = 0;
-  stats.graphic_cnt     = 0;
-  stats.symbol_cnt      = 0;
-  stats.jis_cnt         = 0;
-  stats.success_files   = 0;
-  index = 1;
-
-  memset(kanji_dim,'\0',sizeof(kanji_dim));
-
-  format = NULL;
-  opt_show_a = 'x'; /* default option */
-  opt_show_b = 'y'; /* default option */
-
-  for (argv++; *argv && argv[0][0] == '-' && argv[0][1]; argv++) {
-    for (op = &argv[0][1]; *op; op++) {
-      switch (*op) {
-      case 't': TAB = TRUE; break;
-      case 'e':	CAP = TRUE; break;
-      case 'f': FRA = TRUE; break;
-      case 'c':	CNT = TRUE; break;
-      case 'v':
-	version(stderr);
-	exit(0);
-	break;
-      case 'h':
-	usage();
-	exit(0);
-	break;
-      default:
-	fprintf(stderr, "%s : invalid option -- %c\n", PROG_NAME, *op);
-	usage();
-	exit(0);
-	break;
-      }
+// 配列を拡張する関数
+void expand_char_count() {
+    char_count_capacity *= 2;
+    char_count = realloc(char_count, char_count_capacity * sizeof(CharCount));
+    if (char_count == NULL) {
+        perror("Failed to reallocate memory");
+        exit(1);  // メモリ割り当て失敗時は即終了
     }
-  }
-
-/*  printf("file is %s. option is %s\n", *argv, &opt_show); */
-
-  if(!TAB && !FRA && !CNT)
-    TAB = CAP = FRA = CNT = TRUE;
-
-  if (*argv == NULL)
-    include_file(NULL,  kanji_dim, &stats);
-  else
-    for (; *argv; argv++)
-      include_file(*argv, kanji_dim, &stats);
-
-  dump_kanji_stat(stdout,kanji_dim, &stats); 
-
-  return 0;
 }
 
-/*
- *  include_file()
- *
- *  include_file() opens, analyzes, and then closes a given file_name.
- *  It will record the different types of characters and the numbers
- *  encountered in stats, and will keep track of all Kanji encountered
- *  in kanji_array.
- *
- *  Inputs:  file_name, kanji_array, stats
- *  Return:  Nothing
- *
- */
-
-void 
-include_file (char *file_name, unsigned long *kanji_array, stats_record *stats)
-{
-  FILE          *fp;
-  int	        done;
-  void          classify_kanji();
-  unsigned int  ch;
-  
-  done=FALSE;
-
-  if(file_name == NULL)
-    fp = stdin;
-  else if ((fp=fopen(file_name, "r")) == NULL)
-    fprintf(stderr, "Unable to open '%s'.\n", file_name);
-
-  while (!feof(fp) && !done)
-    if ((ch=getc(fp)) != EOF)
-      if (iseuc(ch)) classify_kanji(ch, getc(fp), kanji_array, stats);
-  fclose(fp);
-  if (!done)  stats->success_files++;
-}
-
-/*
- *  classify_kanji()
- *
- *  I split this routine out of include_file() because that function was 
- *  just getting too gross and huge.
- *
- *  It will classify a EUC character, record statistics about it, and
- *  update the kanji_array if it is a Kanji. 
- *
- *  Inputs: fb_euc, sb_euc, kanji_array, stats
- *  Returns: nothing
- *  Side-effects:  Potentially modifies kanji_array and/or stats
- *
- *  Note that I just made up the names 'fb_euc' and 'sb_euc'; they may
- *  or may not have any correspondence to which byte is stored first
- *  in the kanji_array.  'fb_euc' is just the first one in the two-char
- *  sequence.  `sb_euc' and `second byte of euc' are just too long.
- *
- */
-
-void
-classify_kanji (fb_euc, sb_euc, k_array, stats)
-     unsigned int   fb_euc,sb_euc;
-     unsigned long  *k_array;
-     stats_record    *stats;
-{
-  unsigned long   *ptr;
-  stats->jis_cnt++;
-
-  if (fb_euc >= FB_KANJI_BEGIN){
-    ptr = k_array+((fb_euc - FB_KANJI_BEGIN)
-		   *SB_EUC_RANGE+(sb_euc - SB_EUC_BEGIN));
-    if (*ptr == 0)
-      stats->unique_kanji++;
-    (*ptr)++;
-    stats->kanji_cnt++;
-  }
-  else if(fb_euc == FB_SPACE && sb_euc == SB_SPACE) stats->space_cnt++;
-  else if(fb_euc == FB_PUNC  && sb_punc(sb_euc))    stats->punctuation_cnt++;
-  else if(fb_symb(fb_euc)    && sb_symb(sb_euc))    stats->symbol_cnt++;
-  else if(fb_euc == FB_GREEK)                       stats->greek_cnt++;
-  else if(fb_euc == FB_CYRILLIC)                    stats->cyrillic_cnt++;
-  else if(fb_euc == FB_GRAPHIC)                     stats->graphic_cnt++;
-  else if(fb_euc == FB_HIRAGANA)                    stats->hiragana_cnt++;
-  else if(fb_euc == FB_KATAKANA)                    stats->katakana_cnt++;
-  else if(fb_euc == FB_ROMAN_NUM){
-    if(sb_num(fb_euc))                              stats->number_cnt++;
-    if(sb_rom(fb_euc))                              stats->roman_cnt++; 
-  }
-  else                                              stats->other_cnt++;
-}
-
-/*
- *  dump_kanji_stat()
- *
- *  Print copious statistical information to output, based on
- *  the kanji count stats in kanji_array and the general stats
- *  in stats.
- *
- *  Input:  output, kanji_array, stats
- *  Returns:  Nothing
- *  Side-effects:  Sends lots of output to 'output'
- *
- */
-
-void 
-dump_kanji_stat (FILE *output, unsigned long *kanji_array,stats_record *stats)
-{
-  kanji_record	*kanji_vector,*vector_entry,*last_entry;
-  double        total_chars,cumulative_percentage,running_total,
-                percentage_factor;
-  unsigned long kanji_number,single_total,*entry;
-  unsigned long	i,j;                     /* index into kanji array */
-  int           comparator();
-  void          show_fractions();
-
-  /*  
-   * This works something like this:
-   *    kanji_array is a 2d array of all the possible JIS Kanji codes
-   *           its basic element is just a 'unsigned long' which is
-   *           the number of Kanji with that code that were scanned
-   *    kanji_vector is a 1d array of type 'kanji_record' (which just
-   *           contains the JIS kanji code and the number recorded)
-   *           whose total size is the number of different (unique)
-   *           kanji that were scanned.  E.g. each kanji that was
-   *           scanned gets its own kanji_record in kanji_vector
-   *
-   *    vector_entry is a loop variable that is used to step through
-   *           the malloc()'ed kanji_vector space.  (actually a pointer)
-   *    entry is a pointer which is used to step through kanji_array
-   *    i,j are used to keep the current JIS code accurate (for recording
-   *           in kanji_vector
-   */
-
-  kanji_vector = (kanji_record *) 
-    malloc(sizeof(kanji_record)*stats->unique_kanji);
-  vector_entry = kanji_vector;
-  entry = kanji_array;
-
-  for(i = FB_KANJI_BEGIN; i <= FB_KANJI_END; i++){
-    for(j = SB_EUC_BEGIN; j <= SB_EUC_END; j++){
-      if (*entry){
-	vector_entry->U = i;
-	vector_entry->L = j;
-	vector_entry->count = *entry;
-	vector_entry++;
-      }
-      entry++;
+// UTF-8文字を配列に記録する関数
+void record_char(const unsigned char *utf8_char, int len, bool is_kanji) {
+    // 既存の文字があればカウントを増やす
+    for (int i = 0; i < char_count_size; i++) {
+        if (strncmp((const char *)char_count[i].utf8_char, (const char *)utf8_char, len) == 0) {
+            char_count[i].count++;
+            return;
+        }
     }
-  }
-  if (stats->unique_kanji > 1)
-    qsort(kanji_vector,stats->unique_kanji,sizeof(kanji_record),comparator);
-  /* sort them according to total # that occurred */
 
-  /*
-   *  Now we print out the sorted list of Kanji with their EUC codes,
-   *  how many times they occured, the actual Kanji, and the running
-   *  total percentage of Kanji shown so far. 
-   *  (although not in that order :-)
-   */
+    // 必要であれば配列を拡張
+    if (char_count_size >= char_count_capacity) {
+        expand_char_count();
+    }
 
-  vector_entry = kanji_vector;
-  last_entry   = kanji_vector + (stats->unique_kanji - 1);
-  kanji_number = 1;
-  single_total   = 0;
-  running_total = 0.0;
-  percentage_factor = 100.0 / stats->kanji_cnt;
-  while (vector_entry <= last_entry) {
-    running_total += vector_entry->count;
-    cumulative_percentage = running_total * percentage_factor;
+    // 新しい文字を配列に追加
+    memcpy(char_count[char_count_size].utf8_char, utf8_char, len);
+    char_count[char_count_size].utf8_char[len] = '\0';  // 終端文字を追加
+    char_count[char_count_size].count = 1;
+    char_count[char_count_size].is_kanji = is_kanji;    // 漢字かどうかのフラグを記録
+    char_count_size++;
+}
+
+// 文字の頻度に基づいてソートする比較関数
+int compare_char_count(const void *a, const void *b) {
+    const CharCount *ca = (const CharCount *)a;
+    const CharCount *cb = (const CharCount *)b;
+    return cb->count - ca->count;  // 降順にソート
+}
+
+// バージョン情報を表示する関数
+void print_version() {
+    printf("%s version %s %s\n", PROGRAM, VERSION, AUTHOR);
+}
+
+// ヘルプメッセージを表示する関数
+void print_help() {
+    printf("Usage: %s [OPTIONS] [FILES...]\n", PROGRAM);
+    print_version();
+    printf("Count and list the frequency of characters in text files.\n");
+    printf("If no file is specified, read from standard input.\n");
+    printf("If no option is specified, count all characters.\n");
+    // utf8のみのファイルが対象です。
+    printf("Only UTF-8 encoded files are supported.\n");
+    printf("Options:\n");
+    printf("  --help                  Display this help message and exit.\n");
+    printf("  --version               Display version information and exit.\n");
+    printf("  --count-kanji           Count and list kanji characters.\n");
+    printf("  --count-kanji-coverage  Display kanji characters and their cumulative coverage.\n");
+    printf("License: %s\n", LICENSE);
     
-    if(OBOSOLETE)
-      fprintf(output,"%ld\t%X%X\t%c%c\t%ld\t%9.5f\n",
-	      kanji_number++,
-	      vector_entry->U,	vector_entry->L,
-	      vector_entry->U,	vector_entry->L,
-	      vector_entry->count,
-	      cumulative_percentage);
-
-    if(CNT)
-      fprintf(output,"%ld\t%c%c\t%ld\t%6.4f\n",
-	      kanji_number++,
-	      vector_entry->U,	vector_entry->L,
-	      vector_entry->count,
-	      cumulative_percentage);
-
-    if (vector_entry->count == 1)
-      single_total++;
-    vector_entry++;
-  }
-
-  if(CNT && (TAB || FRA) )
-    fprintf(output,"\n");
-  total_chars = 100.0 / stats->jis_cnt;
-  if(TAB){
-    fprintf(output,"files        %9ld\n", stats->success_files);
-    fprintf(output,"kanji(total) %9ld\t(%4.1f%%)\n", stats->kanji_cnt, stats->kanji_cnt*total_chars);
-    fprintf(output,"kanji(unique)%9ld\n",            stats->unique_kanji);
-    fprintf(output,"kanji(once)  %9ld\t(%4.1f%% of unique)\n", single_total, single_total*100.0/stats->unique_kanji);
-    fprintf(output,"hiragana     %9ld\t(%4.1f%%)\n", stats->hiragana_cnt, stats->hiragana_cnt*total_chars);
-    fprintf(output,"katakana     %9ld\t(%4.1f%%)\n", stats->katakana_cnt, stats->katakana_cnt*total_chars);
-    fprintf(output,"Arabic       %9ld\t(%4.1f%%)\n", stats->number_cnt, stats->number_cnt*total_chars);
-    fprintf(output,"Roman        %9ld\t(%4.1f%%)\n", stats->roman_cnt, stats->roman_cnt*total_chars);
-    fprintf(output,"Cyrillic     %9ld\t(%4.1f%%)\n", stats->cyrillic_cnt, stats->cyrillic_cnt*total_chars);
-    fprintf(output,"Greek        %9ld\t(%4.1f%%)\n", stats->greek_cnt, stats->greek_cnt*total_chars);
-    fprintf(output,"graphic      %9ld\t(%4.1f%%)\n", stats->graphic_cnt, stats->graphic_cnt*total_chars);
-    fprintf(output,"punctuation  %9ld\t(%4.1f%%)\n", stats->punctuation_cnt, stats->punctuation_cnt*total_chars);
-    fprintf(output,"symbols      %9ld\t(%4.1f%%)\n", stats->symbol_cnt, stats->symbol_cnt*total_chars);
-    fprintf(output,"space        %9ld\t(%4.1f%%)\n", stats->space_cnt, stats->space_cnt*total_chars);
-    fprintf(output,"other        %9ld\t(%4.1f%%)\n", stats->other_cnt, stats->other_cnt*total_chars);
-  }
-
-  /*
-   *  display percentage-breakdown stats
-   */
-  if(FRA && TAB)
-    fprintf(output,"\n");
-  if(FRA)
-    show_fractions(output,kanji_vector, stats);
-  return;
 }
 
-int comparator(A,B)
-     kanji_record *A,*B;
-{
-  return (B->count - A->count);
-}
 
-void 
-show_fractions( output, kanji_vector, stats )
-     FILE         *output;
-     kanji_record *kanji_vector;
-     stats_record *stats;
-{
-  kanji_record    *element;
-  int		   fraction;
-  unsigned long    running_total, kanji_count;
-  float            target, one_percent, ten_percent;
+// 文字種と各文字のカウントを数える関数のプロトタイプ
+void count_character_types(const unsigned char *str, int *count_ascii, int *count_hiragana, int *count_katakana, int *count_kanji, int *count_symbols, int *count_other);
 
-  if(CAP){
-    fprintf(output,"\n");
-    fprintf(output,"Coverage Fractions for Observed Kanji\n");
-    fprintf(output,"=====================================\n");
-    fprintf(output,"Percentage        Required\n");
-    fprintf(output,"of Text           Kanji\n");
-    fprintf(output,"-------------------------------------\n");
-  }
+// 文字種と各文字のカウントを数える関数
+void count_character_types(const unsigned char *str, int *count_ascii, int *count_hiragana, int *count_katakana, int *count_kanji, int *count_symbols, int *count_other) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (isutf8_1byte(str[i])) {
+            // 1バイト文字（ASCII）
+            unsigned char utf8_char[2] = {str[i], 0};
+            record_char(utf8_char, 1, false);  // ASCII文字は漢字ではない
+            (*count_ascii)++;
+        } else if (isutf8_2byte(str[i])) {
+            // 2バイト文字
+            unsigned char utf8_char[3] = {str[i], str[i+1], 0};
+            record_char(utf8_char, 2, false);  // 2バイト文字は漢字ではない
+            (*count_other)++;
+            i += 1;  // 2バイト文字なので次のバイトをスキップ
+        } else if (isutf8_3byte(str[i])) {
+            // 3バイト文字の処理
+            unsigned char utf8_char[4] = {str[i], str[i+1], str[i+2], 0};
+            unsigned int unicode_char = ((str[i] & 0x0F) << 12) | ((str[i+1] & 0x3F) << 6) | (str[i+2] & 0x3F);
 
-  ten_percent = (float) stats->kanji_cnt  / 10.0;
-  one_percent = (float) stats->kanji_cnt / 100.0;
-  target      = ten_percent;
-  kanji_count = running_total = 0;
-  element     = kanji_vector;
-
-  /*
-   * What we do here is set `target' to the current percentage
-   * that we're looking for (expressed in total number of occurances).
-   * We then go through the kanji_vector (via element) and add up the
-   * number of occurances of the kanji as we go along, until we reach
-   * target.
-   */
-
-  for (fraction = 1; fraction <= 9; fraction++) {
-    while (running_total < target){
-      running_total += element->count;
-      kanji_count++;
-      element++;
+            if (unicode_char >= 0x3040 && unicode_char <= 0x309F) {
+                // ひらがな
+                record_char(utf8_char, 3, false);
+                (*count_hiragana)++;
+            } else if (unicode_char >= 0x30A0 && unicode_char <= 0x30FF) {
+                // カタカナ
+                record_char(utf8_char, 3, false);
+                (*count_katakana)++;
+            } else if (unicode_char >= 0x4E00 && unicode_char <= 0x9FFF) {
+                // 漢字の範囲: U+4E00 - U+9FFF
+                record_char(utf8_char, 3, true);  // 漢字として記録
+                (*count_kanji)++;
+            } else if ((unicode_char >= 0x2000 && unicode_char <= 0x206F) ||  // 一般句読点
+                       (unicode_char >= 0x3000 && unicode_char <= 0x303F)) {  // 全角句読点など
+                record_char(utf8_char, 3, false);  // 記号として記録
+                (*count_symbols)++;
+            } else {
+                record_char(utf8_char, 3, false);  // その他の3バイト文字
+                (*count_other)++;
+            }
+            i += 2;  // 3バイト文字なので次の2バイトをスキップ
+        } else if (isutf8_4byte(str[i])) {
+            // 4バイト文字
+            unsigned char utf8_char[5] = {str[i], str[i+1], str[i+2], str[i+3], 0};
+            record_char(utf8_char, 4, false);  // 4バイト文字は漢字ではない
+            (*count_other)++;
+            i += 3;  // 4バイト文字なので次の3バイトをスキップ
+        } else if (isutf8_continuation_byte(str[i])) {
+            // 後続バイト（スキップ）
+        } else {
+            printf("Invalid UTF-8 byte: 0x%x\n", str[i]);
+        }
     }
-    fprintf(output,"   %d0              %5ld\n", fraction, kanji_count);
-    target += ten_percent;
-  }
+}
 
-  target -= (ten_percent - one_percent);
+// 漢字のカバー率を出力する関数
+void print_kanji_coverage(int total_kanji_count) {
+    double cumulative_percentage = 0.0;
+    int target_percentages[] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100};
+    int next_target_index = 0;
+    int required_kanji = 0;
+
+    printf("\nCoverage Fractions for Observed Kanji\n");
+    printf("=====================================\n");
+    printf("Percentage          Required\n");
+    printf("of Text             Kanji\n");
+    printf("-------------------------------------\n");
+
+    for (int i = 0; i < char_count_size; i++) {
+        if (char_count[i].is_kanji) {
+            double percentage = (double)char_count[i].count / total_kanji_count * 100.0;
+            cumulative_percentage += percentage;
+            required_kanji++;
+
+            // 指定されたカバー率に達したら出力
+            while (next_target_index < sizeof(target_percentages) / sizeof(target_percentages[0]) &&
+                   cumulative_percentage >= target_percentages[next_target_index]) {
+                printf("%5d\t%20d\n", target_percentages[next_target_index], required_kanji);
+                next_target_index++;
+            }
+        }
+    }
+
+    // 100%に達していない場合、強制的に100%として出力
+    if (cumulative_percentage < 100.0) {
+        printf("%5d\t%20d\n", 100, required_kanji);
+    }
+}
+
+// ファイルまたは標準入力を1行ずつ処理する関数
+void process_stream(FILE *stream, int *count_ascii, int *count_hiragana, int *count_katakana, int *count_kanji, int *count_symbols, int *count_other) {
+    char line[MAX_LINE_LENGTH];
     
-  for( fraction = 1 ; fraction <= 9 ; fraction++ ){
-    while ( running_total < target ){
-      running_total += element->count;
-      kanji_count++;
-      element++;
+    // 1行ずつ読み込み
+    while (fgets(line, sizeof(line), stream)) {
+        count_character_types((const unsigned char *)line, count_ascii, count_hiragana, count_katakana, count_kanji, count_symbols, count_other);
     }
-    fprintf(output,"   9%d              %5ld\n", fraction, kanji_count);
-    target += one_percent;
-  }
-  fprintf(output,"  100              %5ld\n", stats->unique_kanji);
-} /* show_fractions() */
+}
 
+// 結果を出力する関数
+void print_results(int count_ascii, int count_hiragana, int count_katakana, int count_kanji, int count_symbols, int count_other, int file_count, bool from_stdin) {
+    // 処理したファイル数を出力
+    if (from_stdin) {
+        printf("Number of files processed: stdin\n");
+    } else {
+        printf("Number of files processed: %d\n", file_count);
+    }
+
+    // 全体のカウント結果を出力
+    printf("ASCII (Alphabet/Numbers): %d\n", count_ascii);
+    printf("Hiragana: %d\n", count_hiragana);
+    printf("Katakana: %d\n", count_katakana);
+    printf("Kanji: %d\n", count_kanji);
+    printf("Symbols (punctuation): %d\n", count_symbols);
+    printf("Other characters: %d\n", count_other);
+
+    // ソートしてからリストを出力
+    qsort(char_count, char_count_size, sizeof(CharCount), compare_char_count);
+
+    // リストを出力
+    printf("\nRank\tCharacter\tCount\tCumulative Percentage (%%)\n");
+    int rank = 1;
+    double cumulative_percentage = 0.0;
+
+    // 分母の決定: --count-kanji の場合は漢字のみのカウントを使用
+    int total_count = count_kanji_only ? count_kanji : (count_ascii + count_hiragana + count_katakana + count_kanji + count_symbols + count_other);
+
+    for (int i = 0; i < char_count_size; i++) {
+        // --count-kanji の場合は漢字のみを表示
+        if (count_kanji_only && !char_count[i].is_kanji) {
+            continue;  // 漢字以外はスキップ
+        }
+
+        // 累積割合を計算
+        double percentage = (double)char_count[i].count / total_count * 100.0;
+        cumulative_percentage += percentage;
+        printf("%d\t%s\t%d\t%.4f\n", rank++, char_count[i].utf8_char, char_count[i].count, cumulative_percentage);
+    }
+
+    // --count-kanji-coverage が指定された場合に、漢字カバー率も出力
+    if (count_kanji_coverage) {
+        print_kanji_coverage(count_kanji);
+    }
+}
+
+
+
+
+// コマンドライン引数を解析する関数
+void parse_options(int argc, char *argv[], int *start_idx) {
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--help") == 0) {
+            print_help();  // ヘルプメッセージを表示
+            exit(0);
+        } else if (strcmp(argv[i], "--version") == 0) {
+            print_version();  // バージョン情報を表示
+            exit(0);
+        } else if (strcmp(argv[i], "--count-kanji") == 0) {
+            count_kanji_only = true;  // 漢字のみを出力する
+        } else if (strcmp(argv[i], "--count-kanji-coverage") == 0) {
+            count_kanji_coverage = true;  // 漢字カバー率を出力する
+            count_kanji_only = true;      // coverageを出力する場合は漢字も出力する
+        } else if (argv[i][0] != '-') {
+            *start_idx = i;  // ファイル名の開始インデックス
+            break;  // ファイル名の処理を開始
+        }
+    }
+}
+
+int main(int argc, char *argv[]) {
+    int count_ascii = 0, count_hiragana = 0, count_katakana = 0, count_kanji = 0, count_symbols = 0, count_other = 0;
+    bool from_stdin = false;
+    FILE *file = NULL;
+    int file_count = 0;
+
+    // 初期メモリ割り当て
+    char_count = malloc(INITIAL_CHAR_COUNT * sizeof(CharCount));
+    if (char_count == NULL) {
+        perror("Failed to allocate memory");
+        return 1;
+    }
+
+    // オプションを解析
+    int start_idx = argc;  // デフォルトはファイル名なし（標準入力使用）
+    parse_options(argc, argv, &start_idx);
+
+    // ファイルが指定されているか確認
+    if (start_idx < argc) {
+        // 複数のファイルを処理
+        for (int i = start_idx; i < argc; i++) {
+            file = fopen(argv[i], "r");
+            if (file == NULL) {
+                perror("Failed to open file");
+                free(char_count);
+                return 1;
+            }
+            // ファイルを処理
+            process_stream(file, &count_ascii, &count_hiragana, &count_katakana, &count_kanji, &count_symbols, &count_other);
+            fclose(file);
+            file_count++;
+        }
+    } else {
+        // ファイルが指定されていない場合、標準入力を処理
+        from_stdin = true;
+        process_stream(stdin, &count_ascii, &count_hiragana, &count_katakana, &count_kanji, &count_symbols, &count_other);
+        file_count = 1;  // 標準入力でも1つのデータソースとしてカウント
+    }
+
+    // 結果を出力
+    print_results(count_ascii, count_hiragana, count_katakana, count_kanji, count_symbols, count_other, file_count, from_stdin);
+
+    // メモリ解放
+    free(char_count);
+
+    return 0;
+}
