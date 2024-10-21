@@ -1,0 +1,3 @@
+
+yamagen@sophie ~/Dropbox/pub/ksf/ksf_dir[INS]$ echo "この 関数でにほんごニホンゴをshoriする関数　です。" | ./uksf --count-spaces --count-newlines --count-tab
+       yamagen@sophie ~/Dropbox/pub/ksf/ksf_dir[INS]$     

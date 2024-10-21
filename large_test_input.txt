@@ -1,0 +1,34 @@
+# ASCII文字 (アルファベットと数字)
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 1234567890
+Vivamus eleifend libero eu dui vehicula, sit amet dictum nulla consectetur.
+
+# 繰り返しのASCII文字列
+The quick brown fox jumps over the lazy dog. 9876543210
+The quick brown fox jumps over the lazy dog again!
+
+# ひらがな
+ひらがなを使った文章です。これはテスト用の文章で、いくつかの異なる種類の文字を含みます。
+あいうえお かきくけこ さしすせそ たちつてと なにぬねの
+
+# カタカナ
+カタカナのテストです。カタカナは日本語の表音文字で、外来語や特定の強調に使われます。
+アイウエオ カキクケコ サシスセソ タチツテト ナニヌネノ
+
+# 漢字 (長めの文章)
+漢字を使った文章です。日本語には非常に多くの漢字があり、同じ漢字でも異なる意味を持つことがあります。例えば、「今日」は「きょう」と読みますが、英語では「today」を意味します。「漢字」は「かんじ」と読みますが、中国語でも使用されています。
+
+# さらに長い漢字の段落
+漢字は日本語において非常に重要な役割を果たします。それぞれの漢字は意味を持ち、音読みや訓読みなど、異なる読み方が存在します。漢字を学ぶことは、日本語学習者にとって非常に重要なステップであり、基本的な漢字から徐々に複雑な漢字に進んでいくことが一般的です。
+
+# ASCII文字 (長い数字列)
+100200300400500600700800900100110120130140150160170180190200
+
+# 記号と特殊文字
+!@#$%^&*()-=_+[]{}|;':",./<>?~` 
+特殊記号を含む行です。これらの記号はプログラミングや様々な書式設定で使われます。
+
+# ASCIIと漢字を混ぜた文章
+Today is a sunny day. 今日の天気は晴れです。 Let's go for a walk! 散歩に出かけましょう。
+
+# さらにASCIIと日本語を混ぜた文章
+This is a mixed content test. 日本語と英語の両方が含まれています。Mixed sentences are useful for testing diverse character handling.
