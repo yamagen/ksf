@@ -3,6 +3,8 @@
 
 # ksf: Kanji Statistics Filter
 
+![ksf](./ksf.png)
+
 ## Synopsis
 
 Usage: ksf [OPTIONS] [FILES...]
@@ -16,7 +18,7 @@ Only UTF-8 encoded files are supported.
 
 ## Version
 
-ksf version 1.0.0 Last change: 2024/10/22-08:54:29. Hilofumi Yamamoto
+ksf version 1.0.0 Last change: 2024/10/22-08:55:56. Hilofumi Yamamoto
 
 ## Options
 
