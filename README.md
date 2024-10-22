@@ -18,7 +18,7 @@ Only UTF-8 encoded files are supported.
 
 ## Version
 
-ksf version 1.0.0 Last change: 2024/10/22-09:03:09. Hilofumi Yamamoto
+ksf version 1.0.0 Last change: 2024/10/22-13:18:25. Hilofumi Yamamoto
 
 ## Options
 
@@ -33,4 +33,4 @@ ksf version 1.0.0 Last change: 2024/10/22-09:03:09. Hilofumi Yamamoto
 
 ## License
 
-License: Apache 2.0
+Apache 2.0
