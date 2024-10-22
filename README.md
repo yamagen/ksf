@@ -18,7 +18,7 @@ Only UTF-8 encoded files are supported.
 
 ## Version
 
-ksf version 1.0.0 Last change: 2024/10/22-14:04:16. Hilofumi Yamamoto
+ksf version 1.0.0 Last change: 2024/10/22-14:17:42. Hilofumi Yamamoto
 
 ## Options
 
@@ -44,7 +44,7 @@ Hilo Yamamoto / Institute of Science Tokyo
 ### Count kanji characters in a file
 
 ```shell
-$ ksf --count-kanji large_text_file.txt | head -20
+$ ksf --count-kanji large_test_input.txt | head -20
 
 Number of files processed: 1
 ASCII (Alphabet/Numbers): 580
@@ -71,7 +71,7 @@ Rank    Character       Count   Cumulative Percentage (%)
 ### Display kanji characters and their cumulative coverage
 
 ```shell
-$ ksf --count-kanji-coverage large_text_file.txt | tail -25
+$ ksf --count-kanji-coverage large_test_input.txt | tail -25
 
 Coverage Fractions for Observed Kanji
 =====================================
