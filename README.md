@@ -3,6 +3,8 @@
 
 # ksf: Kanji Statistics Filter
 
+[![DOI](https://zenodo.org/badge/163961186.svg)](https://zenodo.org/badge/latestdoi/163961186)
+
 ![ksf](./ksf.png)
 
 ## Synopsis
@@ -18,7 +20,7 @@ Only UTF-8 encoded files are supported.
 
 ## Version
 
-ksf version 1.0.0 Last change: 2024/10/22-14:17:42. Hilofumi Yamamoto
+ksf version 1.0.0 Last change: 2024/10/22-16:31:28. Hilofumi Yamamoto
 
 ## Options
 
