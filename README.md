@@ -20,7 +20,7 @@ Only UTF-8 encoded files are supported.
 
 ## Version
 
-ksf version 1.0.0 Last change: 2024/10/22-16:31:28. Hilofumi Yamamoto
+ksf version 1.0.0 Last change: 2024/10/23-11:01:28. Hilofumi Yamamoto
 
 ## Options
 
