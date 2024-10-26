@@ -5,6 +5,8 @@
 
 [![DOI](https://zenodo.org/badge/163961186.svg)](https://zenodo.org/badge/latestdoi/163961186)
 
+[![Anurag's GitHub stats](https://github-readme-stats.vercel.app/api?username=yamagen)](https://github.com/anuraghazra/github-readme-stats)
+
 ![ksf](./ksf.png)
 
 ## Synopsis
@@ -20,7 +22,7 @@ Only UTF-8 encoded files are supported.
 
 ## Version
 
-ksf version 1.0.0 Last change: 2024/10/23-11:01:28. Hilofumi Yamamoto
+ksf version 1.0.0 Last change: 2024/10/26-09:11:22. Hilofumi Yamamoto
 
 ## Options
 
