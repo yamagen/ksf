@@ -4,8 +4,7 @@
 # ksf: Kanji Statistics Filter
 
 [![DOI](https://zenodo.org/badge/163961186.svg)](https://zenodo.org/badge/latestdoi/163961186)
-
-[![Anurag's GitHub stats](https://github-readme-stats.vercel.app/api?username=yamagen)](https://github.com/anuraghazra/github-readme-stats)
+![Static Badge](https://img.shields.io/badge/github-repository-blue?logo=github)
 
 ![ksf](./ksf.png)
 
@@ -22,7 +21,7 @@ Only UTF-8 encoded files are supported.
 
 ## Version
 
-ksf version 1.0.0 Last change: 2024/10/26-09:11:22. Hilofumi Yamamoto
+ksf version 1.0.0 Last change: 2024/10/26-21:53:22. Hilofumi Yamamoto
 
 ## Options
 
