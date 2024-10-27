@@ -6,7 +6,7 @@
 #define INITIAL_CHAR_COUNT 256  // 初期の文字数カウント
 #define MAX_LINE_LENGTH 8192    // fgetsで読み取る最大行長
 
-#define VERSION "1.0.0 Last change: 2024/10/22-07:59:42."  // プログラムのバージョン
+#define VERSION "1.0.1 Last change: 2024/10/27-13:07:54."  // プログラムのバージョン
 #define AUTHOR "Hilofumi Yamamoto"  // プログラムの作者
 #define PROGRAM "ksf"  // プログラム名
 #define LICENSE "Apache 2.0"  // ライセンス情報
