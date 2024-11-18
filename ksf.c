@@ -2,11 +2,12 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <getopt.h>
 
 #define INITIAL_CHAR_COUNT 256  // 初期の文字数カウント
 #define MAX_LINE_LENGTH 8192    // fgetsで読み取る最大行長
 
-#define VERSION "1.0.1 Last change: 2024/10/27-13:07:54."  // プログラムのバージョン
+#define VERSION "1.0.2 Last change: 2024/11/18-18:41:22."  // プログラムのバージョン
 #define AUTHOR "Hilofumi Yamamoto"  // プログラムの作者
 #define PROGRAM "ksf"  // プログラム名
 #define LICENSE "Apache 2.0"  // ライセンス情報
@@ -88,14 +89,13 @@ void print_help() {
     // utf8のみのファイルが対象です。
     printf("Only UTF-8 encoded files are supported.\n");
     printf("Options:\n");
-    printf("  --help                  Display this help message and exit.\n");
-    printf("  --version               Display version information and exit.\n");
-    printf("  --count-kanji           Count and list kanji characters.\n");
-    printf("  --count-kanji-coverage  Display kanji characters and their cumulative coverage.\n");
+    printf("  -h, --help                  Display this help message and exit.\n");
+    printf("  -v, --version               Display version information and exit.\n");
+    printf("  -k, --count-kanji           Count and list kanji characters.\n");
+    printf("  -c, --count-kanji-coverage  Display kanji characters and their cumulative coverage.\n");
     printf("License: %s\n", LICENSE);
     
 }
-
 
 // 文字種と各文字のカウントを数える関数のプロトタイプ
 void count_character_types(const unsigned char *str, int *count_ascii, int *count_hiragana, int *count_katakana, int *count_kanji, int *count_symbols, int *count_other);
@@ -244,28 +244,40 @@ void print_results(int count_ascii, int count_hiragana, int count_katakana, int 
     }
 }
 
+static struct option long_options[] = {
+    {"help", no_argument, 0, 'h'},
+    {"version", no_argument, 0, 'v'},
+    {"count-kanji", no_argument, 0, 'k'},
+    {"count-kanji-coverage", no_argument, 0, 'c'},
+    {0, 0, 0, 0}
+};
 
-
-
-// コマンドライン引数を解析する関数
 void parse_options(int argc, char *argv[], int *start_idx) {
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--help") == 0) {
-            print_help();  // ヘルプメッセージを表示
-            exit(0);
-        } else if (strcmp(argv[i], "--version") == 0) {
-            print_version();  // バージョン情報を表示
-            exit(0);
-        } else if (strcmp(argv[i], "--count-kanji") == 0) {
-            count_kanji_only = true;  // 漢字のみを出力する
-        } else if (strcmp(argv[i], "--count-kanji-coverage") == 0) {
-            count_kanji_coverage = true;  // 漢字カバー率を出力する
-            count_kanji_only = true;      // coverageを出力する場合は漢字も出力する
-        } else if (argv[i][0] != '-') {
-            *start_idx = i;  // ファイル名の開始インデックス
-            break;  // ファイル名の処理を開始
+    int option_index = 0;
+    int opt;
+    while ((opt = getopt_long(argc, argv, "hvck", long_options, &option_index)) != -1) {
+        switch (opt) {
+            case 'h':
+                print_help();
+                exit(0);
+            case 'v':
+                print_version();
+                exit(0);
+            case 'k':
+//                printf("Count kanji only\n");
+                 count_kanji_only = true;  // 漢字のみを出力する
+                break;
+            case 'c':
+//                printf("Count kanji coverage\n");
+                count_kanji_coverage = true;  // 漢字カバー率を出力する
+                count_kanji_only = true;      // coverageを出力する場合は漢字も出力する
+                break;
+            default:
+                print_help();
+                exit(1);
         }
     }
+    *start_idx = optind; // オプションの解析後のインデックスを設定
 }
 
 int main(int argc, char *argv[]) {

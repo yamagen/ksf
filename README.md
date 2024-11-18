@@ -21,17 +21,17 @@ Only UTF-8 encoded files are supported.
 
 ## Version
 
-ksf version 1.0.0 Last change: 2024/10/26-21:53:22. Hilofumi Yamamoto
+ksf version 1.0.0 Last change: 2024/11/18-18:42:53. Hilofumi Yamamoto
 
 ## Options
 
-- --help
+- -h, --help
   Display this help message and exit.
-- --version
+- -v, --version
   Display version information and exit.
-- --count-kanji
-  Count and list kanji characters.
-- --count-kanji-coverage
+- -k, --count-kanji
+  Count and list kanji characters only.
+- -c, --count-kanji-coverage
   Display kanji characters and their cumulative coverage.
 
 ## License
@@ -40,7 +40,7 @@ Apache 2.0
 
 ## Author
 
-Hilo Yamamoto / Institute of Science Tokyo
+Hilo Yamamoto, Ph.D. / Institute of Science Tokyo
 
 ## Examples
 
